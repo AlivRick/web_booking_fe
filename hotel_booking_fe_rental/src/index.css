@@ -258,3 +258,8 @@ body {
   height: 300px; /* Set a fixed height */
   width: 100%; /* Ensure it takes up the full width of the card */
 }
+.room-image {
+  height: 200px; /* Chiều cao cố định */
+  object-fit: cover; /* Cắt hình ảnh để vừa khung */
+  width: 100%; /* Đảm bảo độ rộng luôn 100% */
+}

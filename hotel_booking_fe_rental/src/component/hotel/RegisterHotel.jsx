@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { registerHotel, getProvinces, getDistrictsByProvince, getWardsByDistrict } from "../utils/ApiFunction";
-import Select from 'react-select';
+import {
+  registerHotel,
+  getProvinces,
+  getDistrictsByProvince,
+  getWardsByDistrict,
+  getFacilities,
+} from "../utils/ApiFunction";
+import Select from "react-select";
 
 const HotelRegistration = () => {
   const [hotel, setHotel] = useState({
@@ -15,6 +21,7 @@ const HotelRegistration = () => {
     coverPhoto: null,
     photos: [],
   });
+
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [wards, setWards] = useState([]);
@@ -24,9 +31,10 @@ const HotelRegistration = () => {
     wards: false,
   });
 
-  // State to store URLs for preview images
   const [coverPhotoPreview, setCoverPhotoPreview] = useState(null);
   const [photosPreview, setPhotosPreview] = useState([]);
+  const [facilities, setFacilities] = useState([]); // Facility options
+  const [selectedFacilities, setSelectedFacilities] = useState([]); // Selected facility IDs
 
   useEffect(() => {
     async function fetchProvinces() {
@@ -39,6 +47,17 @@ const HotelRegistration = () => {
         setLoading((prev) => ({ ...prev, provinces: false }));
       }
     }
+    async function fetchFacilities() {
+      try {
+        const facilityData = await getFacilities();
+        setFacilities(facilityData);
+      } catch (error) {
+        console.error("Error fetching facilities:", error);
+      }
+    }
+    fetchFacilities();
+
+
     fetchProvinces();
   }, []);
 
@@ -91,11 +110,11 @@ const HotelRegistration = () => {
     if (name === "coverPhoto") {
       const file = files[0];
       setHotel((prev) => ({ ...prev, coverPhoto: file }));
-      setCoverPhotoPreview(URL.createObjectURL(file)); // Set the preview image
+      setCoverPhotoPreview(URL.createObjectURL(file));
     } else if (name === "photos") {
       const selectedPhotos = Array.from(files);
       setHotel((prev) => ({ ...prev, photos: selectedPhotos }));
-      setPhotosPreview(selectedPhotos.map(file => URL.createObjectURL(file))); // Set preview images
+      setPhotosPreview(selectedPhotos.map((file) => URL.createObjectURL(file)));
     }
   };
 
@@ -117,7 +136,11 @@ const HotelRegistration = () => {
         formData.append("photos", photo);
       });
 
-      const newHotel = await registerHotel(formData);
+      selectedFacilities.forEach((facilityId) => {
+        formData.append("facilityIds", facilityId); // Append each facility ID
+      });
+
+      const response = await registerHotel(formData);
       alert("Hotel registered successfully");
     } catch (error) {
       alert(`Error registering hotel: ${error.message}`);
@@ -125,11 +148,12 @@ const HotelRegistration = () => {
   };
 
   const formatOptions = (data) => {
-    return data.map(item => ({
+    return data.map((item) => ({
       value: item.id,
       label: item.name,
     }));
   };
+
 
   return (
     <div className="container mt-5">
@@ -241,6 +265,22 @@ const HotelRegistration = () => {
             value={hotel.street}
             onChange={handleChange}
             required
+          />
+        </div>
+
+
+        <div className="mb-3">
+          <label className="form-label">Facilities</label>
+          <Select
+            options={facilities.map((facility) => ({
+              value: facility.id,
+              label: facility.name,
+            }))}
+            isMulti
+            onChange={(selectedOptions) =>
+              setSelectedFacilities(selectedOptions.map((option) => option.value))
+            }
+            placeholder="Select facilities..."
           />
         </div>
 

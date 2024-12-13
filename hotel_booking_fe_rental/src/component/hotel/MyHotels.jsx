@@ -7,6 +7,8 @@ const MyHotels = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+
+  
   useEffect(() => {
     const fetchHotels = async () => {
       try {
@@ -72,6 +74,9 @@ const MyHotels = () => {
                     {/* Update Button */}
                     <Link to={`/hotel/${hotel.id}/update`} className="btn btn-warning">
                       Update
+                    </Link>
+                    <Link to={`/hotel/${hotel.id}/rooms`} className="btn btn-warning">
+                      Room
                     </Link>
                   </div>
                 </div>

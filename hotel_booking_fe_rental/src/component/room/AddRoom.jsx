@@ -1,142 +1,216 @@
-import React, { useState } from "react";
-import { addRoom } from "../utils/ApiFunction";
-import RoomTypeSelector from "../common/RoomTypeSelector";
-import { Link } from "react-router-dom";
-
+import React, { useState, useEffect } from "react";
+import { addRoom, getRoomFacilities, getRoomTypes } from "../utils/ApiFunction";
+import { useParams } from 'react-router-dom';
+import Select from "react-select";
 const AddRoom = () => {
-  const [newRoom, setNewRoom] = useState({
-    photo: null,
-    roomType: "",
+  const { hotelId } = useParams(); // Lấy hotelId từ URL
+  const [roomTypes, setRoomTypes] = useState([]);
+  const [selectedRoomType, setSelectedRoomType] = useState(null);
+  const [selectedFacilities, setSelectedFacilities] = useState([]);
+  const [formData, setFormData] = useState({
+    name: "",
     roomPrice: "",
+    quantity: 1,
+    hotelId: hotelId,
+    photos: [], // File ảnh từ input
   });
-  const [imagePreview, setImagePreview] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
-  const handleRoomInputChange = (e) => {
-    const name = e.target.name;
-    let value = e.target.value;
-    if (name === "roomPrice") {
-      if (!isNaN(value)) {
-        value = parseInt(value);
-      } else {
-        value = "";
+  const [facilities, setFacilities] = useState([]); // Lưu danh sách tiện ích từ server
+  const [preview, setPreview] = useState([]); // Lưu URL preview của hình ảnh
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setFormData({ ...formData, photos: files });
+    const previewFiles = files.map((file) => URL.createObjectURL(file));
+    setPreview(previewFiles);
+  };
+
+
+
+  useEffect(() => {
+    return () => {
+      preview.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [preview]);
+
+  useEffect(() => {
+    const fetchFacilities = async () => {
+      try {
+        const data = await getRoomFacilities(); // Gọi API lấy danh sách tiện ích
+        setFacilities(data); // Lưu vào state
+        
+      } catch (error) {
+        console.error("Error fetching facilities:", error.message);
       }
-    }
-    setNewRoom({ ...newRoom, [name]: value });
+      
+    };
+
+    const fetchRoomTypes = async () => {
+      const roomTypesData = await getRoomTypes();
+      setRoomTypes(roomTypesData);
+    };
+    fetchRoomTypes();
+
+    fetchFacilities();
+  }, []);
+
+  const handleSelectRoomType = (event) => {
+    setSelectedRoomType(event.target.value);
+    setFormData({ ...formData, roomTypeId: event.target.value });
   };
 
-  const handleImageChange = (e) => {
-    const selectedImage = e.target.files[0];
-    setNewRoom({ ...newRoom, photo: selectedImage });
-    setImagePreview(URL.createObjectURL(selectedImage));
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Xử lý FormData
+
+    const roomData = new FormData();
+    roomData.append("name", formData.name);
+    roomData.append("roomPrice", formData.roomPrice);
+    roomData.append("quantity", formData.quantity);
+    roomData.append("hotelId", formData.hotelId);
+
+    roomData.append("roomTypeId", selectedRoomType);
+
+    selectedFacilities.forEach((facilityId) => {
+      roomData.append("facilityIds", facilityId);
+    });
+
+    formData.photos.forEach((photo) => {
+      roomData.append("photos", photo);
+    });
+
     try {
-      const success = await addRoom(
-        newRoom.photo,
-        newRoom.roomType,
-        newRoom.roomPrice
-      );
-      if (success) {
-        setSuccessMessage("A new room was added to the database");
-        setNewRoom({ photo: null, roomType: "", roomPrice: "" });
-        setImagePreview("");
-        setErrorMessage("");
-      } else {
-        setErrorMessage("Error adding new room");
-      }
+      const result = await addRoom(roomData); // Gọi API Function
+      alert("Room added successfully!");
+      console.log(result);
     } catch (error) {
-      setErrorMessage(error.message);
+      alert("Failed to add room. Please try again.");
     }
-    setTimeout(() => {
-      setSuccessMessage("");
-      setErrorMessage("");
-    }, 3000);
   };
 
   return (
-    <section className="container mt-5 mb-5">
-      <div className="row justify-content-center">
-        <div className="col-md-8 col-lg-6">
-          <h2 className="mt-5 mb-2">Add a New Room</h2>
-          {successMessage && (
-            <div className="alert alert-success fade show">
-              {" "}
-              {successMessage}
-            </div>
-          )}
-
-          {errorMessage && (
-            <div className="alert alert-success fade show">
-              {" "}
-              {successMessage}
-            </div>
-          )}
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label className="form-label" htmlFor="roomType">
-                Room Type
-              </label>
-              <div>
-                <RoomTypeSelector
-                  handleRoomInputChange={handleRoomInputChange}
-                  newRoom={newRoom}
-                />
-              </div>
-            </div>
-            <div className="mb-3">
-              <label className="form-label" htmlFor="roomPrice">
-                Room Price
-              </label>
-              <input
-                className="form-control"
-                required
-                type="number"
-                id="roomPrice"
-                name="roomPrice"
-                value={newRoom.roomPrice}
-                onChange={handleRoomInputChange}
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="photo" className="form-label">
-                Room Photo
-              </label>
-              <input
-                required
-                name="photo"
-                id="photo"
-                type="file"
-                className="form-control"
-                onChange={handleImageChange}
-              />
-              {imagePreview && (
-                <img
-                  src={imagePreview}
-                  alt="Preview room photo"
-                  style={{ maxWidth: "400px", maxHeight: "400px" }}
-                  className="mb-3"
-                />
-              )}
-            </div>
-            <div className="d-grid d-md-flex mt-2">
-              <button className="btn btn-outline-primary ml-5">
-                Save Room
-              </button>
-              <Link
-                to={"/existing-rooms"}
-                className="btn btn-outline-primary ml-5"
-              >
-                Back to List
-              </Link>
-            </div>
-          </form>
+    <div className="container mt-4">
+      <h2>Add a New Room</h2>
+      <form onSubmit={handleSubmit}>
+        <div className="mb-3">
+          <label htmlFor="name" className="form-label">
+            Room Name
+          </label>
+          <input
+            type="text"
+            className="form-control"
+            id="name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
         </div>
-      </div>
-    </section>
+
+        <div className="mb-3">
+          <label htmlFor="roomPrice" className="form-label">
+            Room Price
+          </label>
+          <input
+            type="number"
+            className="form-control"
+            id="roomPrice"
+            name="roomPrice"
+            value={formData.roomPrice}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="mb-3">
+          <label htmlFor="quantity" className="form-label">
+            Quantity
+          </label>
+          <input
+            type="number"
+            className="form-control"
+            id="quantity"
+            name="quantity"
+            value={formData.quantity}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+
+
+        <div className="mb-3">
+          <label htmlFor="roomTypeId" className="form-label">
+            Room Type ID
+          </label>
+          <select
+            id="roomTypeId"
+            name="roomTypeId"
+            className="form-select"
+            value={formData.roomTypeId}
+            onChange={handleSelectRoomType}
+          >
+            <option value="">Select Room Type</option>
+            {roomTypes.map((roomType) => (
+              <option key={roomType.id} value={roomType.id}>
+                {roomType.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Facilities</label>
+          <Select
+            options={facilities.map((facility) => ({
+              value: facility.id,
+              label: facility.name,
+            }))}
+            isMulti
+            onChange={(selectedOptions) =>
+              setSelectedFacilities(selectedOptions.map((option) => option.value))
+            }
+            placeholder="Select facilities..."
+          />
+        </div>
+
+        {preview.length > 0 && (
+          <div className="mb-3">
+            <h5>Image Preview:</h5>
+            <div className="d-flex flex-wrap">
+              {preview.map((url, index) => (
+                <img key={index} src={url} alt={`Preview ${index}`} style={{ width: '100px', height: '100px', marginRight: '10px' }} />
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <div className="mb-3">
+          <label htmlFor="photos" className="form-label">
+            Photos
+          </label>
+          <input
+            type="file"
+            className="form-control"
+            id="photos"
+            name="photos"
+            multiple
+            onChange={handleFileChange}
+          />
+        </div>
+        
+        
+        <button type="submit" className="btn btn-primary">
+          Add Room
+        </button>
+      </form>
+    </div>
   );
 };
 

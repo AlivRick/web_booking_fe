@@ -7,6 +7,7 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import AddRoom from "./component/room/AddRoom";
 import ExistingRooms from "./component/room/ExistingRooms";
 import EditRoom from "./component/room/EditRoom.jsx";
+import UpdateRoom from "./component/room/UpdateRoom.jsx";
 import NavBar from "./component/layout/NavBar.jsx";
 import Footer from "./component/layout/Footer.jsx";
 import RoomListing from "./component/room/RoomListing.jsx";
@@ -27,6 +28,7 @@ import MyHotels from "./component/hotel/MyHotels.jsx";
 import Layout from "./component/layout/Layout.jsx";
 import UpdateHotel from "./component/hotel/UpdateHotel.jsx";
 import HotelDetails from "./component/hotel/HotelDetails.jsx";
+import RoomList from "./component/room/RoomList.jsx";
 
 function App() {
   return (
@@ -41,6 +43,7 @@ function App() {
             <Route element={<RequireAuth><Layout /></RequireAuth>}>
               <Route path="/" element={<Admin />}/>
               <Route path="/edit-room/:roomId" element={<EditRoom />} />
+              <Route path="/update-room/:roomId" element={<UpdateRoom />} />
               <Route path="/existing-rooms" element={<ExistingRooms />} />
               <Route path="/add-room" element={<AddRoom />} />
               <Route path="/book-room/:roomId" element={<Checkout />} />
@@ -59,7 +62,8 @@ function App() {
               </Switch> */}
               <Route path="/register-hotel" element={<RegisterHotel />} />
               <Route path="/pending-hotels" element={<PendingHotels />} />
-              
+              <Route path="/hotel/:hotelId/rooms" element={<RoomList />} />
+              <Route path="/hotel/:hotelId/add-room" element={<AddRoom />} />
             </Route>
           </Routes>
         </Router>

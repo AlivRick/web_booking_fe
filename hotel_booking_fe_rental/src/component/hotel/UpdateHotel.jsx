@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import Select from 'react-select'; // Đừng quên import Select
 import {
   getHotelById,
   updateHotel,
   getProvinces,
   getDistrictsByProvince,
   getWardsByDistrict,
+  getFacilities
 } from "../utils/ApiFunction";
 
 const UpdateHotel = () => {
@@ -22,9 +24,8 @@ const UpdateHotel = () => {
     districtId: "",
     wardId: "",
     coverPhoto: null,
-    coverPhotoBase64: null,
     newPhotos: [],
-    photosBase64: [],
+    facilityNames: []
   });
 
   const [provinces, setProvinces] = useState([]);
@@ -32,11 +33,26 @@ const UpdateHotel = () => {
   const [wards, setWards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [facilities, setFacilities] = useState([]);
+  const [currentPhotos, setCurrentPhotos] = useState([]);
+  const [newPhotos, setNewPhotos] = useState([]); // Danh sách ảnh mới thêm vào
+  const [selectedFacilities, setSelectedFacilities] = useState([]);
+  useEffect(() => {
+    // Chuyển đổi facilities thành định dạng mà Select cần
+    const formattedFacilities = facilities.map((facility) => ({
+      value: facility.name, // Sử dụng name làm value
+      label: facility.name,
+    }));
+    setSelectedFacilities(formattedFacilities.filter(facility => hotel.facilityNames.includes(facility.label)));
+  }, [facilities, hotel.facilityNames]);
+
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const data = await getHotelById(id);
+        console.log(data);
+        setCurrentPhotos(data.photos || []);
         setHotel((prev) => ({
           ...prev,
           name: data.name,
@@ -47,8 +63,8 @@ const UpdateHotel = () => {
           provinceId: data.provinceId || "",
           districtId: data.districtId || "",
           wardId: data.wardId || "",
-          coverPhotoBase64: data.photo ? `data:image/png;base64,${data.photo}` : null,
-          photosBase64: data.photos ? data.photos.map((photo) => `data:image/png;base64,${photo}`) : [],
+          facilityNames: data.facilityNames || [],
+          coverPhoto: data.photo || null // Lưu coverPhoto vào state
         }));
 
         const provincesData = await getProvinces();
@@ -64,6 +80,9 @@ const UpdateHotel = () => {
           setWards(wardsData);
         }
 
+        const facilitiesData = await getFacilities();
+        setFacilities(facilitiesData);
+
         setLoading(false);
       } catch (err) {
         setError("Failed to fetch data.");
@@ -72,6 +91,25 @@ const UpdateHotel = () => {
     };
     fetchData();
   }, [id]);
+
+  const handleFacilityChange = (selectedOptions) => {
+    const selectedValues = selectedOptions ? selectedOptions.map(option => option.label) : [];
+    setHotel((prevHotel) => ({
+      ...prevHotel,
+      facilityNames: selectedValues,
+    }));
+    setSelectedFacilities(selectedOptions);
+  };
+
+  const handleAddPhoto = (e) => {
+    const files = Array.from(e.target.files);
+    setNewPhotos((prev) => [...prev, ...files]); // Thêm ảnh mới vào danh sách newPhotos
+  };
+
+  const handleDeletePhoto = (index) => {
+    // Xóa ảnh khỏi currentPhotos
+    setCurrentPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleProvinceChange = async (e) => {
     const provinceId = e.target.value;
@@ -117,15 +155,10 @@ const UpdateHotel = () => {
   const handleCoverPhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setHotel((prev) => ({
-          ...prev,
-          coverPhoto: file,
-          coverPhotoBase64: reader.result,
-        }));
-      };
-      reader.readAsDataURL(file);
+      setHotel((prev) => ({
+        ...prev,
+        coverPhoto: file,
+      }));
     }
   };
 
@@ -133,48 +166,53 @@ const UpdateHotel = () => {
     setHotel((prev) => ({
       ...prev,
       coverPhoto: null,
-      coverPhotoBase64: null,
     }));
   };
 
-  const handlePhotosChange = (e) => {
-    const files = Array.from(e.target.files);
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setHotel((prev) => ({
-          ...prev,
-          newPhotos: [...prev.newPhotos, file],
-          photosBase64: [...prev.photosBase64, reader.result],
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleDeletePhoto = (index) => {
-    setHotel((prev) => ({
-      ...prev,
-      photosBase64: prev.photosBase64.filter((_, i) => i !== index),
-      newPhotos: prev.newPhotos.filter((_, i) => i !== index),
-    }));
+  const base64ToFile = (base64String, filename) => {
+    const bstr = atob(base64String); // Giải mã base64
+    const n = bstr.length;
+    const u8arr = new Uint8Array(n);
+  
+    for (let i = 0; i < n; i++) {
+      u8arr[i] = bstr.charCodeAt(i);
+    }
+  
+    return new File([u8arr], filename, { type: 'image/jpeg' }); // Giả sử ảnh là JPEG
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = { ...hotel };
 
-    // Ensure the payload is valid before sending
-    if (!payload.name || !payload.phoneNumber || !payload.email || !payload.description || !payload.street) {
-      setError("All fields are required.");
-      return;
+    const formData = new FormData();
+    formData.append("name", hotel.name);
+    formData.append("phoneNumber", hotel.phoneNumber);
+    formData.append("email", hotel.email);
+    formData.append("description", hotel.description);
+    formData.append("street", hotel.street);
+    formData.append("wardId", hotel.wardId);
+    formData.append("facilityNames", hotel.facilityNames);
+    // Chỉ gửi coverPhoto nếu có thay đổi
+    if (hotel.coverPhoto instanceof File) {
+      formData.append('coverPhoto', hotel.coverPhoto); // Gửi cover photo mới
     }
 
+   // Chuyển đổi ảnh hiện có từ base64 thành File
+  const allPhotos = [
+    ...currentPhotos.map((photo, index) => base64ToFile(photo, `photo_${index}.jpg`)), // Chuyển đổi base64 thành File
+    ...newPhotos // Giữ nguyên ảnh mới
+  ];
+
+  allPhotos.forEach((photo) => {
+    formData.append('photos', photo); // Gửi từng ảnh
+  });
+
     try {
-      await updateHotel(id, payload);
+      await updateHotel(id, formData);
       navigate(`/hotel/${id}`);
     } catch (err) {
       setError("Failed to update hotel.");
+      console.error(err);
     }
   };
 
@@ -238,6 +276,21 @@ const UpdateHotel = () => {
             value={hotel.description}
             onChange={handleChange}
             required
+          />
+        </div>
+
+       {/* Facilities */}
+       <div className="mb-4">
+          <label className="form-label">Facilities</label>
+          <Select
+            options={facilities.map((facility) => ({
+              value: facility.name, // Sử dụng name làm value
+              label: facility.name,
+            }))}
+            isMulti
+            value={selectedFacilities}
+            onChange={handleFacilityChange}
+            placeholder="Select facilities..."
           />
         </div>
 
@@ -312,12 +365,12 @@ const UpdateHotel = () => {
         </div>
 
         {/* Cover Photo */}
-        <div className="mb-3 position-relative">
+        <div className="mb-3">
           <label className="form-label">Cover Photo</label>
-          {hotel.coverPhotoBase64 && (
+          {hotel.coverPhoto && (
             <div className="position-relative" style={{ width: '200px', height: '200px', overflow: 'hidden' }}>
               <img
-                src={hotel.coverPhotoBase64}
+                src={typeof hotel.coverPhoto === 'string' ? `data:image/jpeg;base64,${hotel.coverPhoto}` : URL.createObjectURL(hotel.coverPhoto)} // Hiển thị ảnh từ base64 hoặc file
                 alt="Cover Preview"
                 style={{
                   width: '100%',
@@ -326,14 +379,6 @@ const UpdateHotel = () => {
                   borderRadius: '8px',
                 }}
               />
-              <button
-                type="button"
-                className="btn btn-danger btn-sm position-absolute top-0 end-0"
-                onClick={handleDeleteCoverPhoto}
-                style={{ zIndex: 1 }}
-              >
-                X
-              </button>
             </div>
           )}
           <input
@@ -344,11 +389,10 @@ const UpdateHotel = () => {
           />
         </div>
 
-        {/* Photos */}
         <div className="mb-3">
           <label className="form-label">Hotel Photos</label>
           <div>
-            {hotel.photosBase64.map((photo, index) => (
+            {currentPhotos.map((photo, index) => (
               <div
                 key={index}
                 style={{
@@ -361,7 +405,7 @@ const UpdateHotel = () => {
                 }}
               >
                 <img
-                  src={photo}
+                  src={typeof photo === 'string' ? `data:image/jpeg;base64,${photo}` : URL.createObjectURL(photo)}
                   alt={`Photo ${index + 1}`}
                   style={{
                     width: '100%',
@@ -380,15 +424,40 @@ const UpdateHotel = () => {
                 </button>
               </div>
             ))}
+            {newPhotos.map((photo, index) => (
+              <div
+                key={`new_${index}`}
+                style={{
+                  display: 'inline-block',
+                  marginRight: '10px',
+                  position: 'relative',
+                  width: '200px',
+                  height: '200px',
+                  overflow: 'hidden',
+                }}
+              >
+                <img
+                  src={URL.createObjectURL(photo)} // Hiển thị ảnh mới
+                  alt={`New Photo ${index + 1}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '8px',
+                  }}
+                />
+              </div>
+            ))}
           </div>
           <input
             type="file"
             className="form-control"
             accept="image/*"
             multiple
-            onChange={handlePhotosChange}
+            onChange={handleAddPhoto}
           />
         </div>
+
 
         <button type="submit" className="btn btn-primary">Update Hotel</button>
       </form>

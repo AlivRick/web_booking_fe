@@ -13,7 +13,7 @@ const Sidebar = () => {
           <Link to="/existing-bookings">Manage Bookings</Link>
         </li>
         <li>
-          <Link to="/existing-users">Manage Users</Link>
+          <Link to="/my-hotels">Manage Hotel</Link>
         </li>
         <li>
           <Link to="/register-hotel">Register new hotel</Link>

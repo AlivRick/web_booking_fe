@@ -13,22 +13,13 @@ export const getHeader = () => {
   };
 };
 
-export async function addRoom(photo, roomType, roomPrice) {
-  const formData = new FormData();
-  formData.append("photo", photo);
-  formData.append("roomType", roomType);
-  formData.append("roomPrice", roomPrice);
 
-  const response = await api.post("/rooms/add/new-room", formData, {
-    headers: getHeader(),
-  });
-
-  return response.status === 201;
-}
-
+// lấy dữ liêu room type từ backend (Thuan12Z)
 export async function getRoomTypes() {
   try {
-    const response = await api.get("/rooms/room/types");
+    const response = await api.get("/api/room/type", {
+      headers: getHeader(),
+    });
     return response.data;
   } catch (error) {
     console.error("Error fetching room types", error);
@@ -57,26 +48,50 @@ export async function deleteRoom(roomId) {
     throw new Error(`Error deleting  room ${error.massage}`);
   }
 }
-//This function update a room
-export async function updateRoom(roomId, roomData) {
-  const formData = new FormData();
-  formData.append("roomType", roomData.roomType);
-  formData.append("roomPrice", roomData.roomPrice);
-  formData.append("photo", roomData.photo);
-  const response = await api.put(`/rooms/update/${roomId}`, formData, {
-    headers: getHeader(),
-  });
-  return response;
-}
-//This function gets a room by the id
-export async function getRoomById(roomId) {
+
+
+export async function updateRoom(roomId, roomDTO) {
   try {
-    const result = await api.get(`/rooms/room/${roomId}`);
-    return result.data;
+    const response = await api.put(`/api/rooms/${roomId}`, roomDTO, {
+      headers: getHeader(),
+    });
+    return response.data;
   } catch (error) {
-    throw new Error(`Error featching room ${error.massage}`);
+    throw new Error(`Error updating room: ${error.response?.data || error.message}`);
   }
 }
+
+export async function getRoomById(roomId) {
+  try {
+    const response = await api.get(`/api/rooms/update/${roomId}`, {
+      headers: getHeader(),
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(`Error fetching room by id: ${error.response?.data || error.message}`);
+  }
+}
+
+// //This function update a room
+// export async function updateRoom(roomId, roomData) {
+//   const formData = new FormData();
+//   formData.append("roomType", roomData.roomType);
+//   formData.append("roomPrice", roomData.roomPrice);
+//   formData.append("photo", roomData.photo);
+//   const response = await api.put(`/rooms/update/${roomId}`, formData, {
+//     headers: getHeader(),
+//   });
+//   return response;
+// }
+//This function gets a room by the id
+// export async function getRoomById(roomId) {
+//   try {
+//     const result = await api.get(`/rooms/room/${roomId}`);
+//     return result.data;
+//   } catch (error) {
+//     throw new Error(`Error featching room ${error.massage}`);
+//   }
+// }
 export async function bookRoom(roomId, booking) {
   try {
     const response = await api.post(
@@ -102,6 +117,7 @@ export async function getAllBookings() {
     throw new Error(`Error fetching bookings : ${error.massage}`);
   }
 }
+
 export async function getBookingByConfirmationCode(confirmationCode) {
   try {
     const result = await api.get(`/bookings/confirmation/${confirmationCode}`);
@@ -197,6 +213,9 @@ export async function getBookingsByUserId(userId, token) {
     throw new Error("Failed to fetch bookings");
   }
 }
+
+
+
 // Hàm đăng ký khách sạn
 export async function registerHotel(hotelData) {
   try {
@@ -209,62 +228,76 @@ export async function registerHotel(hotelData) {
   }
 }
 
+//npm install react-responsive-carousel
+// API function room by hotel ( Thuan )
+export async function getRoomsByHotelId(hotelId) {
+  try {
+    const response = await api.get(`/api/rooms/${hotelId}`,{
+      headers: getHeader(),
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(`Error fetching rooms: ${error.message}`);
+  }
+}
+export async function addRoom(roomData) {
+  try { 
+    const response = await api.post("/api/rooms", roomData, {
+    headers: getHeader(),
+  });
+  return response.data;
+  } catch(error){
+    throw new Error(`Error adding room: ${error.response?.data || error.message}`);
+  }
+}
+
 // API to fetch hotel by ID
 export async function getHotelById(hotelId) {
   try {
     const response = await api.get(`/hotels/hotels/${hotelId}`, {
       headers: getHeader(),
     });
+
     return response.data;
   } catch (error) {
     throw new Error("Error fetching hotel details");
   }
 }
 
-// API to update hotel
+export async function getRoomFacilities() {
+  try {
+    const response = await api.get('/api/roomFacilities', {
+      headers: getHeader(),
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(`Error fetching facilities: ${error.response?.data || error.message}`);
+  }
+}
+
+export async function getFacilities() {
+  try {
+    const response = await api.get('/api/facilities', {
+      headers: getHeader(),
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(`Error fetching facilities: ${error.response?.data || error.message}`);
+  }
+}
+
 // API to update hotel
 export async function updateHotel(hotelId, hotelData) {
   try {
-    const formData = new FormData();
-
-    // Append hotel data (including text fields)
-    formData.append("name", hotelData.name);
-    formData.append("phoneNumber", hotelData.phoneNumber);
-    formData.append("email", hotelData.email);
-    formData.append("description", hotelData.description);
-    formData.append("street", hotelData.street);
-    formData.append("wardId", hotelData.wardId);
-
-    // Always send the coverPhoto
-    if (hotelData.coverPhoto) {
-      formData.append("coverPhoto", hotelData.coverPhoto);
-    }
-
-    // Combine old photos with new photos
-    if (hotelData.photos && hotelData.photos.length > 0) {
-      hotelData.photos.forEach(photo => {
-        formData.append("photos", photo);  // Append existing photos
-      });
-    }
-
-    // Append new photos if any
-    if (hotelData.newPhotos && hotelData.newPhotos.length > 0) {
-      hotelData.newPhotos.forEach(photo => {
-        formData.append("photos", photo);  // Append new photos
-      });
-    }
-
-    // Send request to update hotel
-    const response = await api.put(`/hotels/hotels/update/${hotelId}`, formData, {
+    const response = await api.put(`/hotels/hotels/update/${hotelId}`, hotelData, {
       headers: getHeader(),
     });
-
     return response.data;
   } catch (error) {
-    console.error("Error updating hotel:", error);
-    throw new Error("Error updating hotel");
+    throw new Error(`Error registering hotel: ${error.response?.data || error.message}`);
   }
 }
+
 
 
 

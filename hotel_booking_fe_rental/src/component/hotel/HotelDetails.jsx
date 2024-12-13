@@ -49,6 +49,26 @@ const HotelDetails = () => {
             </div>
           </div>
 
+          {/* Hotel Facilities */}
+          {hotel.facilityNames && hotel.facilityNames.length > 0 && (
+            <div className="row mb-4">
+              <div className="col-12">
+                <div className="card border-light shadow-sm">
+                  <div className="card-header">
+                    <h4 className="card-title">Facilities</h4>
+                  </div>
+                  <div className="card-body">
+                    <ul>
+                      {hotel.facilityNames.map((facilityNames, index) => (
+                        <li key={index}>{facilityNames}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Hotel Address and Contact */}
           <div className="row mb-4">
             <div className="col-md-6">
